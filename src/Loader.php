@@ -20,6 +20,8 @@ class Loader
      */
     protected $filePath;
 
+    protected $fileStr;
+
     /**
      * Are we immutable?
      *
@@ -42,17 +44,17 @@ class Loader
      *
      * @return void
      */
-    public function __construct($filePath, $immutable = false)
+    public function __construct($filePath, $immutable = false,$fileStr='')
     {
         $this->filePath = $filePath;
         $this->immutable = $immutable;
+        $this->fileStr=$fileStr;
     }
 
     /**
      * Set immutable value.
      *
      * @param bool $immutable
-     *
      * @return $this
      */
     public function setImmutable($immutable = false)
@@ -81,16 +83,45 @@ class Loader
      */
     public function load()
     {
+    
         $this->ensureFileIsReadable();
 
         $filePath = $this->filePath;
+        $fileStr = $this->fileStr;
+        $lines_str=array();
         $lines = $this->readLinesFromFile($filePath);
+
+        if($fileStr!=""){
+            $lines_str = $this->readLinesFromString($fileStr);
+        }
+        if(count($lines_str)>0){
+            foreach ($lines_str as $line) {
+                if (!$this->isComment($line) && $this->looksLikeSetter($line)) {
+                    $this->setEnvironmentVariable($line);
+                }
+            }
+        }
+
         foreach ($lines as $line) {
             if (!$this->isComment($line) && $this->looksLikeSetter($line)) {
                 $this->setEnvironmentVariable($line);
             }
         }
+        array_merge($lines,$lines_str);
+        return $lines;
+    }
 
+    /**
+     * Load `.env` file in given directory.
+     *
+     * @throws \Dotenv\Exception\InvalidPathException|\Dotenv\Exception\InvalidFileException
+     *
+     * @return array
+     */
+    public function loadString($str)
+    {
+        $lines=$this->readLinesFromString($str);
+        
         return $lines;
     }
 
@@ -168,7 +199,6 @@ class Loader
         ini_set('auto_detect_line_endings', '1');
         $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         ini_set('auto_detect_line_endings', $autodetect);
-
         return $lines;
     }
 
@@ -298,7 +328,6 @@ class Loader
                 return $_SERVER[$name];
             default:
                 $value = getenv($name);
-
                 return $value === false ? null : $value; // switch getenv default to null
         }
     }
@@ -374,5 +403,29 @@ class Loader
         }
 
         unset($_ENV[$name], $_SERVER[$name]);
+    }
+
+
+     /**
+     * Read lines from the file, auto detecting line endings.
+     *
+     * @param string $stringenv
+     *
+     * @return array
+     */
+    public function readLinesFromString($str)
+    {
+        // Read file into an array of lines with auto-detected line endings
+       
+        $arr = explode(PHP_EOL , $str);
+        $res = array();
+        foreach($arr as $row) {
+
+            if($row==""){
+                continue ;
+            }
+            $res[] = trim($row);
+        }
+        return $res;
     }
 }
