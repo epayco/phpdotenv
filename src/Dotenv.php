@@ -34,10 +34,11 @@ class Dotenv
      *
      * @return void
      */
-    public function __construct($path, $file = '.env')
+    public function __construct($path, $file = '.env',$str=null)
     {
         $this->filePath = $this->getFilePath($path, $file);
-        $this->loader = new Loader($this->filePath, true);
+
+        $this->loader = new Loader($this->filePath, true, $str);
     }
 
     /**
